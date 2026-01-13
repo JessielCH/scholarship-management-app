@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react"; // Ya no necesitamos useEffect para esto
 import { Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -10,27 +10,20 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { auth } from "../../config/firebase";
+import { useAuthStore } from "../../store/authStore"; // <--- IMPORTAMOS ZUZTAK
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
 
-  // STATE: User Data & Role
-  const [currentUser, setCurrentUser] = useState({
-    name: "Guest",
-    email: "...",
-    photo: null,
-  });
-  const [userRole, setUserRole] = useState("ADMIN"); // 'ADMIN' or 'STUDENT'
+  // 1. CONECTAMOS CON ZUSTAND (ZUZTAK)
+  // Sacamos el usuario actual y la función de salir
+  const user = useAuthStore((state) => state.user);
+  const logoutZustand = useAuthStore((state) => state.logout);
 
-  // EFFECT: Load User from LocalStorage on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("currentUser");
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
-    }
-  }, []);
+  // Estado local solo para la demo de roles
+  const [userRole, setUserRole] = useState(user?.role || "ADMIN");
 
-  // --- MENU ITEMS CONFIGURATION ---
+  // --- MENU ITEMS ---
   const adminItems = [
     {
       icon: <LayoutDashboard size={20} />,
@@ -54,16 +47,15 @@ const DashboardLayout = () => {
     { icon: <User size={20} />, label: "My Profile", path: "/profile" },
   ];
 
-  // Dynamic Menu Selection
   const menuItems = userRole === "ADMIN" ? adminItems : studentItems;
 
+  // Lógica de Logout actualizada
   const handleLogout = async () => {
-    await auth.signOut();
-    localStorage.removeItem("currentUser"); // Clear session
-    navigate("/");
+    await auth.signOut(); // Cierra en Firebase
+    logoutZustand(); // Cierra en Zustand (Limpia datos)
+    navigate("/"); // Manda al Login
   };
 
-  // DEMO FUNCTION: Toggle Role
   const toggleRole = () => {
     const newRole = userRole === "ADMIN" ? "STUDENT" : "ADMIN";
     setUserRole(newRole);
@@ -102,7 +94,6 @@ const DashboardLayout = () => {
 
         {/* Footer & Profile */}
         <div className="p-4 border-t border-gray-100 space-y-3">
-          {/* Demo Toggle Button */}
           <button
             onClick={toggleRole}
             className="w-full flex items-center justify-center gap-2 bg-uce-gold/10 text-uce-blue hover:bg-uce-gold/20 py-2 rounded-lg text-xs font-bold transition-colors border border-uce-gold/20"
@@ -110,32 +101,33 @@ const DashboardLayout = () => {
             <RefreshCcw size={14} /> Switch View (Demo)
           </button>
 
-          {/* REAL USER PROFILE */}
+          {/* PERFIL (Datos vienen de Zuztak ahora) */}
           <div className="flex items-center gap-3 px-2">
-            {currentUser.photo ? (
+            {user?.photo ? (
               <img
-                src={currentUser.photo}
+                src={user.photo}
                 alt="Profile"
-                className="w-8 h-8 rounded-full border border-gray-200"
+                referrerPolicy="no-referrer" // Fix foto Google
+                className="w-8 h-8 rounded-full border border-gray-200 object-cover"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-uce-blue flex items-center justify-center text-white font-bold">
-                {currentUser.name[0]}
+              <div className="w-8 h-8 rounded-full bg-uce-blue flex items-center justify-center text-white font-bold select-none">
+                {user?.name ? user.name[0].toUpperCase() : "U"}
               </div>
             )}
 
             <div className="text-sm overflow-hidden">
               <p
                 className="font-bold text-gray-700 truncate w-32"
-                title={currentUser.name}
+                title={user?.name}
               >
-                {currentUser.name}
+                {user?.name || "Guest"}
               </p>
               <p
                 className="text-xs text-gray-500 truncate w-32"
-                title={currentUser.email}
+                title={user?.email}
               >
-                {currentUser.email}
+                {user?.email || "No Email"}
               </p>
             </div>
           </div>
@@ -149,7 +141,7 @@ const DashboardLayout = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="flex-1 ml-64 p-8 overflow-y-auto bg-f5f7fa">
         <Outlet />
       </main>

@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@stripe/stripe-js": "^8.6.1",
+    "@tanstack/react-query": "^5.90.16",
+    "react-hook-form": "^7.71.0",
+    "stripe": "^20.1.2",
+    "zustand": "^5.0.10"
+  }
+}

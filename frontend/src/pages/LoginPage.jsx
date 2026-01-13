@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Para redirección
+import { useNavigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase";
 import { client } from "../config/contentful";
+import { useAuthStore } from "../store/authStore"; // <--- IMPORTAMOS ZUSTAND (ZUZTAK)
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { LogIn, HelpCircle, Megaphone } from "lucide-react";
@@ -10,13 +11,16 @@ import { LogIn, HelpCircle, Megaphone } from "lucide-react";
 export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [cmsAnnouncement, setCmsAnnouncement] = useState("Loading news...");
-  const navigate = useNavigate(); // Hook para navegar
 
-  // 1. JAMSTACK EFFECT: Load content from Headless CMS
+  const navigate = useNavigate();
+
+  // TRAEMOS LA ACCIÓN 'LOGIN' DE ZUSTAND
+  const loginZustand = useAuthStore((state) => state.login);
+
+  // 1. JAMSTACK: Cargar noticias de Contentful
   useEffect(() => {
     const fetchAnnouncement = async () => {
       try {
-        // Fetch 'anuncio' content type from Contentful
         const response = await client.getEntries({ content_type: "anuncio" });
         if (response.items.length > 0) {
           setCmsAnnouncement(response.items[0].fields.mensaje);
@@ -25,33 +29,34 @@ export const LoginPage = () => {
         }
       } catch (error) {
         console.error("CMS Error:", error);
-        setCmsAnnouncement("System Online - 2026 Phase");
+        setCmsAnnouncement("System Online - Secure Mode");
       }
     };
     fetchAnnouncement();
   }, []);
 
-  // 2. OAUTH2 LOGIC: Login with Google & Redirect
+  // 2. LOGICA DE LOGIN CON GOOGLE + ZUSTAND
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
+      // A. Login con Firebase (Google)
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
+      const token = await user.getIdToken(); // Token JWT real
 
-      // A. Get JWT Token (For your Presentation/Console)
-      const token = await user.getIdToken();
       console.log("✅ JWT GENERATED:", token);
 
-      // B. Save User Info to Browser Storage (Simulating Session)
-      const sessionData = {
+      // B. ¡AVISAMOS A ZUSTAND! (Esto abre la Puerta Protegida)
+      // Zustand guardará esto automáticamente en LocalStorage gracias a 'persist'
+      loginZustand({
+        uid: user.uid,
         name: user.displayName,
         email: user.email,
         photo: user.photoURL,
-        role: "ADMIN", // Default role for Demo
-      };
-      localStorage.setItem("currentUser", JSON.stringify(sessionData));
+        role: "ADMIN", // Asignamos rol por defecto (luego vendría de BD)
+      });
 
-      // C. REDIRECT TO DASHBOARD
+      // C. REDIRECCIÓN (Ahora el Guardia sí te dejará pasar)
       navigate("/dashboard");
     } catch (error) {
       console.error(error);
@@ -63,11 +68,11 @@ export const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gray-50">
-      {/* Decorative Top Line */}
+      {/* Línea decorativa */}
       <div className="absolute top-0 left-0 w-full h-2 bg-uce-gold"></div>
 
       <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 space-y-8 relative z-10">
-        {/* Header */}
+        {/* Encabezado */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-uce-blue">
             Scholarship <br /> Management
@@ -77,7 +82,7 @@ export const LoginPage = () => {
           </p>
         </div>
 
-        {/* --- JAMSTACK SECTION (Contentful) --- */}
+        {/* Zona Jamstack (Noticias) */}
         <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
           <Megaphone className="text-uce-blue w-5 h-5 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-uce-blue">
@@ -88,7 +93,7 @@ export const LoginPage = () => {
           </div>
         </div>
 
-        {/* OAuth Button */}
+        {/* Botón de Google */}
         <Button
           variant="outline"
           onClick={handleGoogleLogin}
@@ -112,7 +117,7 @@ export const LoginPage = () => {
           <div className="flex-grow border-t border-gray-200"></div>
         </div>
 
-        {/* Visual Form (For Aesthetics) */}
+        {/* Formulario Visual (Estético) */}
         <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
           <Input
             label="Institutional Email"

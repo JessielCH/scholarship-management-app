@@ -1,87 +1,93 @@
 import { useState } from "react";
-import { Search, Filter, Eye, Download } from "lucide-react";
+import { Search, Filter, Eye, Download, Loader2 } from "lucide-react"; // Loader icon
+import { useQuery } from "@tanstack/react-query"; // <--- TANK SATKA QUERY
 
-// --- MOCK DATA (15 Students) ---
-const mockContracts = [
-  {
-    id: "S001",
-    name: "Maria Garcia",
-    faculty: "Engineering",
-    phase: "5/7",
-    status: "Approved",
-  },
-  {
-    id: "S002",
-    name: "Juan Perez",
-    faculty: "Medicine",
-    phase: "3/7",
-    status: "Pending",
-  },
-  {
-    id: "S003",
-    name: "Ana Lopez",
-    faculty: "Arts",
-    phase: "6/7",
-    status: "Under Review",
-  },
-  {
-    id: "S004",
-    name: "Carlos Diaz",
-    faculty: "Business",
-    phase: "1/7",
-    status: "Rejected",
-  },
-  {
-    id: "S005",
-    name: "Elena Torres",
-    faculty: "Engineering",
-    phase: "7/7",
-    status: "Paid",
-  },
-  {
-    id: "S006",
-    name: "Luis Vega",
-    faculty: "Sciences",
-    phase: "2/7",
-    status: "Pending",
-  },
-  {
-    id: "S007",
-    name: "Sofia Minda",
-    faculty: "Medicine",
-    phase: "4/7",
-    status: "Approved",
-  },
-  {
-    id: "S008",
-    name: "Kevin Ortiz",
-    faculty: "Engineering",
-    phase: "3/7",
-    status: "Pending",
-  },
-];
+// --- API SIMULATION (Esto luego se reemplaza con fetch a Java) ---
+const fetchContractsAPI = async () => {
+  // Simulamos retardo de red (1.5 segundos)
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  // Datos simulados que vienen del "Backend"
+  return [
+    {
+      id: "S001",
+      name: "Maria Garcia",
+      faculty: "Engineering",
+      phase: "5/7",
+      status: "Approved",
+    },
+    {
+      id: "S002",
+      name: "Juan Perez",
+      faculty: "Medicine",
+      phase: "3/7",
+      status: "Pending",
+    },
+    {
+      id: "S003",
+      name: "Ana Lopez",
+      faculty: "Arts",
+      phase: "6/7",
+      status: "Under Review",
+    },
+    {
+      id: "S004",
+      name: "Carlos Diaz",
+      faculty: "Business",
+      phase: "1/7",
+      status: "Rejected",
+    },
+    {
+      id: "S005",
+      name: "Elena Torres",
+      faculty: "Engineering",
+      phase: "7/7",
+      status: "Paid",
+    },
+    {
+      id: "S006",
+      name: "Luis Vega",
+      faculty: "Sciences",
+      phase: "2/7",
+      status: "Pending",
+    },
+    {
+      id: "S007",
+      name: "Sofia Minda",
+      faculty: "Medicine",
+      phase: "4/7",
+      status: "Approved",
+    },
+  ];
+};
 
 export const ContractsPage = () => {
-  // State for Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterFaculty, setFilterFaculty] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
 
-  // --- FILTER LOGIC (The "Brain" of this page) ---
-  const filteredContracts = mockContracts.filter((contract) => {
-    // 1. Search by Name or ID
+  // --- USANDO TANSTACK QUERY ---
+  // isLoading: true mientras carga
+  // data: aquí llegan los contratos cuando termina
+  // isError: true si falla
+  const {
+    data: contracts = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["contractsList"], // Nombre único para la caché
+    queryFn: fetchContractsAPI, // La función que pide los datos
+  });
+
+  // --- FILTRADO (Igual que antes, pero ahora sobre 'contracts' que viene de la query) ---
+  const filteredContracts = contracts.filter((contract) => {
     const matchesSearch =
       contract.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.id.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // 2. Filter by Faculty
     const matchesFaculty =
       filterFaculty === "All" || contract.faculty === filterFaculty;
-
-    // 3. Filter by Status
     const matchesStatus =
       filterStatus === "All" || contract.status === filterStatus;
-
     return matchesSearch && matchesFaculty && matchesStatus;
   });
 
@@ -99,15 +105,14 @@ export const ContractsPage = () => {
         </div>
         <div className="text-right">
           <span className="text-2xl font-bold text-uce-blue">
-            {filteredContracts.length}
+            {isLoading ? "..." : filteredContracts.length}
           </span>
           <span className="text-gray-500 text-sm ml-2">Records found</span>
         </div>
       </div>
 
-      {/* --- TOOLBAR (Search & Filters) --- */}
+      {/* Toolbar */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
-        {/* Search Bar */}
         <div className="relative flex-1 w-full">
           <Search
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -121,59 +126,47 @@ export const ContractsPage = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-
-        {/* Filters */}
         <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative">
-            <Filter
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={16}
-            />
-            <select
-              className="pl-9 pr-8 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-uce-blue appearance-none cursor-pointer"
-              value={filterFaculty}
-              onChange={(e) => setFilterFaculty(e.target.value)}
-            >
-              <option value="All">All Faculties</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Medicine">Medicine</option>
-              <option value="Arts">Arts</option>
-              <option value="Business">Business</option>
-              <option value="Sciences">Sciences</option>
-            </select>
-          </div>
-
+          {/* Filtros simplificados para el ejemplo */}
           <select
-            className="px-4 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-uce-blue cursor-pointer"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 border rounded-lg"
+            onChange={(e) => setFilterFaculty(e.target.value)}
           >
-            <option value="All">All Statuses</option>
-            <option value="Approved">Approved</option>
-            <option value="Pending">Pending</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Paid">Paid</option>
+            <option value="All">All Faculties</option>
+            <option value="Engineering">Engineering</option>
+            <option value="Medicine">Medicine</option>
           </select>
         </div>
       </div>
 
       {/* --- DATA TABLE --- */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-4">ID</th>
-                <th className="px-6 py-4">Student Name</th>
-                <th className="px-6 py-4">Faculty</th>
-                <th className="px-6 py-4">Progress</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredContracts.length > 0 ? (
-                filteredContracts.map((contract) => (
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[300px]">
+        {/* ESTADO DE CARGA (Loading State) */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-3">
+            <Loader2 className="animate-spin text-uce-blue" size={40} />
+            <p>Fetching data from secure server...</p>
+          </div>
+        ) : isError ? (
+          <div className="p-8 text-center text-red-500">
+            Error loading contracts.
+          </div>
+        ) : (
+          /* TABLA DE DATOS (Success State) */
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4">ID</th>
+                  <th className="px-6 py-4">Student Name</th>
+                  <th className="px-6 py-4">Faculty</th>
+                  <th className="px-6 py-4">Progress</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredContracts.map((contract) => (
                   <tr
                     key={contract.id}
                     className="hover:bg-blue-50/50 transition-colors"
@@ -187,10 +180,8 @@ export const ContractsPage = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {contract.faculty}
                     </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className="font-bold text-uce-blue">
-                        {contract.phase}
-                      </span>
+                    <td className="px-6 py-4 font-bold text-uce-blue">
+                      {contract.phase}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -207,34 +198,16 @@ export const ContractsPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end gap-2">
-                      <button
-                        className="p-2 text-gray-400 hover:text-uce-blue hover:bg-white rounded-lg transition-all"
-                        title="View Details"
-                      >
+                      <button className="p-2 text-gray-400 hover:text-uce-blue hover:bg-white rounded-lg">
                         <Eye size={18} />
-                      </button>
-                      <button
-                        className="p-2 text-gray-400 hover:text-uce-blue hover:bg-white rounded-lg transition-all"
-                        title="Download PDF"
-                      >
-                        <Download size={18} />
                       </button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="px-6 py-12 text-center text-gray-400"
-                  >
-                    No contracts found matching your filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
