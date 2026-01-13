@@ -1,0 +1,34 @@
+# --- DEPENDENCIAS (¡Lo más pesado!) ---
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# --- BUILD & DIST (Archivos generados) ---
+dist/
+build/
+out/
+.output/
+
+# --- VARIABLES DE ENTORNO (¡Seguridad!) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# --- FIREBASE ---
+.firebase/
+firebase-debug.log*
+
+# --- IDEs y SISTEMA (Basura) ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- LOGS ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
