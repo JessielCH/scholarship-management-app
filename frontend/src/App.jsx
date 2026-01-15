@@ -7,7 +7,6 @@ import { ProtectedRoute } from "./routes/ProtectedRoute"; // <--- IMPORTA EL GUA
 import { DashboardPage } from "./pages/admin/DashboardPage";
 import { ValidationPage } from "./pages/admin/ValidationPage";
 import { ContractsPage } from "./pages/admin/ContractsPage";
-
 // Student Pages
 import { TrackerPage } from "./pages/student/TrackerPage";
 import { ProfilePage } from "./pages/student/ProfilePage";

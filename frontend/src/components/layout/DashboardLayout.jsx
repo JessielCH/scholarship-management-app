@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { auth } from "../../config/firebase";
 import { useAuthStore } from "../../store/authStore"; // <--- IMPORTAMOS ZUZTAK
-
 const DashboardLayout = () => {
   const navigate = useNavigate();
 
