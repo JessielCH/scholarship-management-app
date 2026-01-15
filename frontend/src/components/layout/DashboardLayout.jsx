@@ -14,7 +14,7 @@ import { useAuthStore } from "../../store/authStore"; // <--- IMPORTAMOS ZUZTAK
 const DashboardLayout = () => {
   const navigate = useNavigate();
 
-  // 1. CONECTAMOS CON ZUSTAND (ZUZTAK)
+  // 1. CONECTAMOS CON ZUSTAND
   // Sacamos el usuario actual y la función de salir
   const user = useAuthStore((state) => state.user);
   const logoutZustand = useAuthStore((state) => state.logout);
@@ -29,14 +29,16 @@ const DashboardLayout = () => {
       label: "Dashboard",
       path: "/dashboard",
     },
+    // CAMBIO DE NOMBRE: De 'All Contracts' a 'Scholarship Archive'
     {
       icon: <FileText size={20} />,
-      label: "All Contracts",
+      label: "Scholarship Archive",
       path: "/contracts",
     },
+    // CAMBIO DE NOMBRE: De 'Validation' a 'Pending Reviews'
     {
       icon: <CheckCircle size={20} />,
-      label: "Validation",
+      label: "Pending Reviews",
       path: "/validation",
     },
   ];

@@ -1,8 +1,21 @@
 import { useState } from "react";
-import { Search, Filter, Eye, Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Search,
+  Filter,
+  Eye,
+  Download,
+  RefreshCw,
+  Loader2,
+  FileCheck,
+  FileText,
+  Table,
+  Printer,
+} from "lucide-react";
+import { toast, Toaster } from "sonner";
 
-// --- MOCK DATA (15 Students) ---
-const mockContracts = [
+// --- 1. DATOS QUEMADOS (HARDCODED DATA) ---
+const MOCK_ARCHIVE_DATA = [
   {
     id: "S001",
     name: "Maria Garcia",
@@ -59,55 +72,112 @@ const mockContracts = [
     phase: "3/7",
     status: "Pending",
   },
+  {
+    id: "S009",
+    name: "Mario Bross",
+    faculty: "Arts",
+    phase: "7/7",
+    status: "Paid",
+  },
+  {
+    id: "S010",
+    name: "Luigi Mansion",
+    faculty: "Arts",
+    phase: "2/7",
+    status: "Rejected",
+  },
 ];
 
+// --- 2. FUNCIÓN SIMULADA PARA TANK SATKA QUERY ---
+// Simula que va al servidor, espera 1 segundo y devuelve los datos de arriba
+const fetchLocalArchive = async () => {
+  console.log("📡 Fetching from Secure Archive...");
+  await new Promise((resolve) => setTimeout(resolve, 1000)); // Retraso falso
+  return MOCK_ARCHIVE_DATA;
+};
+
 export const ContractsPage = () => {
-  // State for Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterFaculty, setFilterFaculty] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
 
-  // --- FILTER LOGIC (The "Brain" of this page) ---
-  const filteredContracts = mockContracts.filter((contract) => {
-    // 1. Search by Name or ID
+  // --- 3. IMPLEMENTACIÓN DE TANK SATKA QUERY ---
+  const {
+    data: contracts = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["archiveData"], // Clave única del caché
+    queryFn: fetchLocalArchive, // Usamos la función local de arriba
+    staleTime: 1000 * 60 * 5, // 5 minutos de memoria caché
+  });
+
+  // Lógica de Filtros
+  const filteredContracts = contracts.filter((contract) => {
     const matchesSearch =
       contract.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.id.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // 2. Filter by Faculty
     const matchesFaculty =
       filterFaculty === "All" || contract.faculty === filterFaculty;
-
-    // 3. Filter by Status
     const matchesStatus =
       filterStatus === "All" || contract.status === filterStatus;
-
     return matchesSearch && matchesFaculty && matchesStatus;
   });
 
+  // --- LÓGICA DE DESCARGA INTELIGENTE ---
+  const handleSmartDownload = (contract) => {
+    if (contract.status === "Paid" || contract.status === "Completed") {
+      toast.success(`🧾 Downloading Payment Receipt`, {
+        description: `Bank transfer proof for ${contract.name}`,
+      });
+    } else {
+      toast.info(`📄 Downloading Application Status Report`, {
+        description: `Current Phase: ${contract.phase} for ${contract.name}`,
+      });
+    }
+  };
+
+  const handleGlobalExport = () => {
+    toast.success("📊 Exporting Archive Data", {
+      description: `Generating Excel file for ${filteredContracts.length} records...`,
+    });
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-end">
+    <div className="space-y-6 h-full flex flex-col">
+      <Toaster position="top-right" richColors />
+
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">
-            Master Repository
+            Scholarship Archive
           </h1>
           <p className="text-gray-500">
-            Manage and audit all scholarship applications.
+            Master database of all scholarship applications and history.
           </p>
         </div>
-        <div className="text-right">
-          <span className="text-2xl font-bold text-uce-blue">
-            {filteredContracts.length}
-          </span>
-          <span className="text-gray-500 text-sm ml-2">Records found</span>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleGlobalExport}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm text-sm font-bold"
+          >
+            <Table size={16} /> Export to Excel
+          </button>
+          <button
+            onClick={() => toast("🖨️ Sending to printer...")}
+            className="flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors shadow-sm text-sm font-bold"
+          >
+            <Printer size={16} /> Print Report
+          </button>
         </div>
       </div>
 
-      {/* --- TOOLBAR (Search & Filters) --- */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
-        {/* Search Bar */}
+      {/* FILTROS */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center z-10">
+        {/* Buscador */}
         <div className="relative flex-1 w-full">
           <Search
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -115,36 +185,28 @@ export const ContractsPage = () => {
           />
           <input
             type="text"
-            placeholder="Search by Student Name or ID..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-uce-blue"
+            placeholder="Search Archive (Name, ID)..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-uce-blue transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        {/* Filters */}
+        {/* Dropdowns */}
         <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative">
-            <Filter
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={16}
-            />
-            <select
-              className="pl-9 pr-8 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-uce-blue appearance-none cursor-pointer"
-              value={filterFaculty}
-              onChange={(e) => setFilterFaculty(e.target.value)}
-            >
-              <option value="All">All Faculties</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Medicine">Medicine</option>
-              <option value="Arts">Arts</option>
-              <option value="Business">Business</option>
-              <option value="Sciences">Sciences</option>
-            </select>
-          </div>
+          <select
+            className="pl-4 pr-8 py-2.5 rounded-lg border border-gray-200 bg-white focus:ring-2 focus:ring-uce-blue text-sm text-gray-600 font-medium"
+            value={filterFaculty}
+            onChange={(e) => setFilterFaculty(e.target.value)}
+          >
+            <option value="All">All Faculties</option>
+            <option value="Engineering">Engineering</option>
+            <option value="Medicine">Medicine</option>
+            <option value="Arts">Arts</option>
+          </select>
 
           <select
-            className="px-4 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-uce-blue cursor-pointer"
+            className="pl-4 pr-8 py-2.5 rounded-lg border border-gray-200 bg-white focus:ring-2 focus:ring-uce-blue text-sm text-gray-600 font-medium"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -152,88 +214,126 @@ export const ContractsPage = () => {
             <option value="Approved">Approved</option>
             <option value="Pending">Pending</option>
             <option value="Rejected">Rejected</option>
-            <option value="Paid">Paid</option>
+            <option value="Paid">Paid / Disbursed</option>
           </select>
+
+          <button
+            onClick={() => {
+              refetch();
+            }}
+            className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all"
+            title="Refresh Data"
+          >
+            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
 
-      {/* --- DATA TABLE --- */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-4">ID</th>
-                <th className="px-6 py-4">Student Name</th>
-                <th className="px-6 py-4">Faculty</th>
-                <th className="px-6 py-4">Progress</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredContracts.length > 0 ? (
-                filteredContracts.map((contract) => (
-                  <tr
-                    key={contract.id}
-                    className="hover:bg-blue-50/50 transition-colors"
+      {/* TABLA DE DATOS */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 overflow-hidden relative flex flex-col">
+        {/* Headers */}
+        <div className="bg-gray-50/80 border-b border-gray-200 px-6 py-3 grid grid-cols-12 gap-4 items-center text-xs font-bold text-gray-500 uppercase tracking-wider sticky top-0">
+          <div className="col-span-3">Applicant</div>
+          <div className="col-span-3">Faculty</div>
+          <div className="col-span-2">Phase</div>
+          <div className="col-span-2">Status</div>
+          <div className="col-span-2 text-right">Downloads</div>
+        </div>
+
+        {/* Rows */}
+        <div className="overflow-y-auto flex-1 p-2 space-y-2">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full opacity-50">
+              <Loader2 size={30} className="text-uce-blue animate-spin mb-2" />
+              <p className="text-xs text-gray-500">
+                Accessing Secure Archive...
+              </p>
+            </div>
+          ) : filteredContracts.length > 0 ? (
+            filteredContracts.map((contract) => (
+              <div
+                key={contract.id}
+                className="grid grid-cols-12 gap-4 items-center px-4 py-3 bg-white border border-gray-100 rounded-xl hover:shadow-md hover:border-blue-200 transition-all group"
+              >
+                {/* Applicant */}
+                <div className="col-span-3">
+                  <p className="font-bold text-gray-800 text-sm truncate">
+                    {contract.name}
+                  </p>
+                  <p className="text-xs font-mono text-gray-400">
+                    {contract.id}
+                  </p>
+                </div>
+
+                {/* Faculty */}
+                <div className="col-span-3">
+                  <span className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                    {contract.faculty}
+                  </span>
+                </div>
+
+                {/* Phase */}
+                <div className="col-span-2">
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1">
+                    <div
+                      className="bg-uce-blue h-1.5 rounded-full"
+                      style={{
+                        width: `${(parseInt(contract.phase[0]) / 7) * 100}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-bold">
+                    {contract.phase} Complete
+                  </span>
+                </div>
+
+                {/* Status */}
+                <div className="col-span-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wide ${
+                      contract.status === "Paid"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : contract.status === "Approved"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : contract.status === "Rejected"
+                        ? "bg-red-50 text-red-700 border-red-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
                   >
-                    <td className="px-6 py-4 font-mono text-sm text-gray-500">
-                      {contract.id}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-gray-800">
-                      {contract.name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {contract.faculty}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className="font-bold text-uce-blue">
-                        {contract.phase}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                          contract.status === "Approved" ||
-                          contract.status === "Paid"
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : contract.status === "Rejected"
-                            ? "bg-red-50 text-red-700 border-red-200"
-                            : "bg-orange-50 text-orange-700 border-orange-200"
-                        }`}
-                      >
-                        {contract.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right flex justify-end gap-2">
-                      <button
-                        className="p-2 text-gray-400 hover:text-uce-blue hover:bg-white rounded-lg transition-all"
-                        title="View Details"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button
-                        className="p-2 text-gray-400 hover:text-uce-blue hover:bg-white rounded-lg transition-all"
-                        title="Download PDF"
-                      >
-                        <Download size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="px-6 py-12 text-center text-gray-400"
+                    {contract.status}
+                  </span>
+                </div>
+
+                {/* SMART ACTIONS */}
+                <div className="col-span-2 flex justify-end gap-2">
+                  <button
+                    onClick={() => handleSmartDownload(contract)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      contract.status === "Paid"
+                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        : "bg-gray-100 text-gray-600 hover:bg-uce-blue hover:text-white"
+                    }`}
                   >
-                    No contracts found matching your filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    {contract.status === "Paid" ? (
+                      <>
+                        {" "}
+                        <FileCheck size={14} /> Receipt{" "}
+                      </>
+                    ) : (
+                      <>
+                        {" "}
+                        <FileText size={14} /> Report{" "}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-10 text-gray-400">
+              No records found in archive.
+            </div>
+          )}
         </div>
       </div>
     </div>

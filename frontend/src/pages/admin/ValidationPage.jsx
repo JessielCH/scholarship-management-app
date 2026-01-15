@@ -1,220 +1,272 @@
 import { useState } from "react";
 import {
-  CheckSquare,
-  Square,
-  FileText,
-  AlertTriangle,
   CheckCircle,
   XCircle,
   ArrowLeft,
+  FileText,
+  ChevronRight,
+  AlertCircle,
+  MessageSquare,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "../../components/ui/Button"; // Reusing our button component
+import { toast, Toaster } from "sonner";
+
+// MOCK DATA: Pending Applications
+const pendingReviews = [
+  {
+    id: "S002",
+    name: "Juan Perez",
+    faculty: "Medicine",
+    document: "scholarship_agreement.pdf",
+    phase: "Validation",
+  },
+  {
+    id: "S006",
+    name: "Luis Vega",
+    faculty: "Sciences",
+    document: "bank_certificate.pdf",
+    phase: "Validation",
+  },
+  {
+    id: "S008",
+    name: "Kevin Ortiz",
+    faculty: "Engineering",
+    document: "id_copy.pdf",
+    phase: "Validation",
+  },
+];
 
 export const ValidationPage = () => {
-  const navigate = useNavigate();
-
-  // --- STATE: Form Data ---
+  const [currentIndex, setCurrentIndex] = useState(null);
   const [feedback, setFeedback] = useState("");
 
-  // Checklist State
+  // Validation Checkbox State
   const [checks, setChecks] = useState({
-    signatureMatches: false,
-    bankCertificate: false,
-    datesCorrect: false,
-    termsMet: false,
-    attachments: false,
+    signature: false,
+    dates: false,
+    bank: false,
   });
 
-  // Toggle Checkbox logic
+  const currentApplication =
+    currentIndex !== null ? pendingReviews[currentIndex] : null;
+
   const toggleCheck = (key) => {
     setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Mock Actions
-  const handleApprove = () => {
-    const allChecked = Object.values(checks).every(Boolean);
-    if (!allChecked) {
-      alert("⚠️ Please complete the checklist before approving.");
+  const handleDecision = (decision) => {
+    // VALIDATION: Reject requires feedback
+    if (decision === "reject" && feedback.trim().length < 5) {
+      toast.error(
+        "⚠️ Feedback is required to reject an application. Please explain why."
+      );
       return;
     }
-    alert("✅ Contract VALIDATED & APPROVED. Proceeding to Payment Phase.");
-    navigate("/dashboard");
-  };
 
-  const handleReject = () => {
-    if (!feedback) {
-      alert("⚠️ Please provide a rejection reason in the feedback box.");
-      return;
+    // 1. Notification
+    if (decision === "approve") {
+      toast.success(`✅ Application Approved: ${currentApplication.name}`);
+    } else {
+      toast.info(`🚫 Application Rejected. Feedback sent to student.`);
     }
-    alert(`❌ Contract REJECTED. Reason sent to student: "${feedback}"`);
-    navigate("/dashboard");
+
+    // 2. RESET FORM (Clear for next student)
+    setFeedback("");
+    setChecks({ signature: false, dates: false, bank: false });
+
+    // 3. AUTO-ADVANCE LOGIC
+    if (currentIndex < pendingReviews.length - 1) {
+      // Move to next student instantly
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      // No more students
+      toast.success("🎉 All pending reviews completed!");
+      setCurrentIndex(null); // Back to list
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-100px)] flex flex-col">
-      {/* HEADER: Navigation & Title */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
-        >
-          <ArrowLeft size={24} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            Contract Validation{" "}
-            <span className="text-gray-400 font-normal text-lg">
-              #SCH-2026-889
-            </span>
-          </h1>
-          <p className="text-sm text-gray-500">
-            Reviewing application for:{" "}
-            <span className="font-bold text-uce-blue">
-              Alice Johnson (Engineering)
-            </span>
+    <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
+      <Toaster position="top-center" richColors />
+
+      {/* VIEW 1: INBOX LIST */}
+      {currentIndex === null ? (
+        <>
+          <h1 className="text-3xl font-bold text-gray-800">Pending Reviews</h1>
+          <p className="text-gray-500">
+            Inbox: You have {pendingReviews.length} documents waiting for
+            validation.
           </p>
-        </div>
-      </div>
 
-      {/* MAIN SPLIT VIEW */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
-        {/* LEFT COLUMN: PDF Viewer (Mock) */}
-        <div className="bg-gray-800 rounded-2xl shadow-inner flex flex-col overflow-hidden border border-gray-600">
-          {/* Fake PDF Toolbar */}
-          <div className="bg-gray-900 p-3 flex justify-between items-center text-gray-400 text-xs px-4">
-            <span>contract_alice_signed.pdf</span>
-            <div className="flex gap-2">
-              <span className="cursor-pointer hover:text-white">
-                Page 1 / 3
-              </span>
-              <span className="cursor-pointer hover:text-white">Zoom +</span>
-            </div>
-          </div>
-
-          {/* PDF Preview Area */}
-          <div className="flex-1 bg-gray-500 flex items-center justify-center p-8 overflow-y-auto">
-            <div className="bg-white w-full max-w-md h-full shadow-2xl p-8 text-[10px] text-gray-400 select-none">
-              {/* Visual Representation of a Document */}
-              <div className="w-full h-4 bg-gray-200 mb-4"></div>
-              <div className="w-2/3 h-4 bg-gray-200 mb-8"></div>
-              <div className="space-y-2">
-                {[...Array(20)].map((_, i) => (
-                  <div key={i} className="w-full h-2 bg-gray-100"></div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-4">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="p-4">Student</th>
+                  <th className="p-4">Faculty</th>
+                  <th className="p-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {pendingReviews.map((app, index) => (
+                  <tr
+                    key={app.id}
+                    className="hover:bg-blue-50 transition-colors"
+                  >
+                    <td className="p-4 font-medium">
+                      {app.name}{" "}
+                      <span className="text-xs text-gray-400 block">
+                        {app.id}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-600">{app.faculty}</td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => setCurrentIndex(index)}
+                        className="text-sm bg-uce-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 ml-auto"
+                      >
+                        Start Review <ChevronRight size={16} />
+                      </button>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-              <div className="mt-12 pt-4 border-t border-gray-300 flex justify-between items-end">
-                <div>
-                  <div className="w-24 h-8 border-b border-black mb-1 font-handwriting text-blue-900 text-lg">
-                    Alice J.
-                  </div>
-                  <span>Student Signature</span>
-                </div>
-                <div className="opacity-50">
-                  <div className="w-24 h-8 border-b border-gray-300 mb-1"></div>
-                  <span>Admin Signature</span>
-                </div>
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        {/* RIGHT COLUMN: Validation Tools */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col overflow-y-auto">
-          {/* Section: Details */}
-          <div className="mb-6 pb-6 border-b border-gray-100">
-            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FileText size={18} className="text-uce-blue" /> Contract Details
-            </h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-400">Date Signed</p>
-                <p className="font-medium text-gray-700">Jan 09, 2026</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Amount</p>
-                <p className="font-medium text-gray-700">$2,500.00 / Sem</p>
-              </div>
+        </>
+      ) : (
+        /* VIEW 2: VALIDATION WORKSPACE */
+        <>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setCurrentIndex(null)}
+              className="flex items-center gap-2 text-gray-500 hover:text-uce-blue transition-colors"
+            >
+              <ArrowLeft size={20} /> Back to Inbox
+            </button>
+            <div className="text-sm font-bold text-gray-400">
+              Reviewing {currentIndex + 1} of {pendingReviews.length}
             </div>
           </div>
 
-          {/* Section: Checklist */}
-          <div className="mb-6 flex-1">
-            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <CheckSquare size={18} className="text-uce-blue" /> Validation
-              Checklist
-            </h3>
-            <div className="space-y-3">
-              {[
-                {
-                  key: "signatureMatches",
-                  label: "Signature Matches ID Document",
-                },
-                { key: "bankCertificate", label: "Bank Certificate Valid" },
-                { key: "datesCorrect", label: "Contract Dates are Correct" },
-                { key: "termsMet", label: "Academic Terms & Conditions Met" },
-                {
-                  key: "attachments",
-                  label: "All Required Attachments Present",
-                },
-              ].map((item) => (
-                <div
-                  key={item.key}
-                  onClick={() => toggleCheck(item.key)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
-                    ${
-                      checks[item.key]
-                        ? "bg-blue-50 border-uce-blue/30 text-uce-blue"
-                        : "border-gray-100 hover:bg-gray-50 text-gray-600"
-                    }
-                  `}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+            {/* LEFT: DOCUMENT VIEWER */}
+            <div className="bg-gray-800 rounded-2xl flex items-center justify-center relative overflow-hidden group shadow-inner">
+              <div className="text-center text-white/50 group-hover:text-white transition-colors">
+                <FileText size={64} className="mx-auto mb-4" />
+                <p>PDF Viewer Simulator</p>
+                <p className="text-sm font-mono mt-2 text-blue-300">
+                  {currentApplication.document}
+                </p>
+              </div>
+            </div>
+
+            {/* RIGHT: CONTROL PANEL */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col overflow-y-auto">
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {currentApplication.name}
+                </h2>
+                <p className="text-uce-blue font-medium">
+                  {currentApplication.faculty} • {currentApplication.id}
+                </p>
+              </div>
+
+              {/* CHECKLIST */}
+              <div className="space-y-3 mb-6">
+                <h3 className="font-bold text-xs text-gray-400 uppercase tracking-wider">
+                  Acceptance Criteria
+                </h3>
+
+                <label
+                  className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                    checks.signature
+                      ? "bg-blue-50 border-blue-200"
+                      : "hover:bg-gray-50 border-gray-100"
+                  }`}
                 >
-                  {checks[item.key] ? (
-                    <CheckCircle size={20} />
-                  ) : (
-                    <Square size={20} />
-                  )}
-                  <span className="text-sm font-medium select-none">
-                    {item.label}
+                  <input
+                    type="checkbox"
+                    checked={checks.signature}
+                    onChange={() => toggleCheck("signature")}
+                    className="w-5 h-5 accent-uce-blue"
+                  />
+                  <span className="text-gray-700 text-sm">
+                    Signature matches ID Document
                   </span>
-                </div>
-              ))}
+                </label>
+
+                <label
+                  className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                    checks.dates
+                      ? "bg-blue-50 border-blue-200"
+                      : "hover:bg-gray-50 border-gray-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checks.dates}
+                    onChange={() => toggleCheck("dates")}
+                    className="w-5 h-5 accent-uce-blue"
+                  />
+                  <span className="text-gray-700 text-sm">
+                    Valid dates within academic period
+                  </span>
+                </label>
+
+                <label
+                  className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                    checks.bank
+                      ? "bg-blue-50 border-blue-200"
+                      : "hover:bg-gray-50 border-gray-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checks.bank}
+                    onChange={() => toggleCheck("bank")}
+                    className="w-5 h-5 accent-uce-blue"
+                  />
+                  <span className="text-gray-700 text-sm">
+                    Bank Certificate attached & legible
+                  </span>
+                </label>
+              </div>
+
+              {/* FEEDBACK SECTION */}
+              <div className="mb-6 flex-1">
+                <h3 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                  Feedback / Reason for Rejection <MessageSquare size={14} />
+                </h3>
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="e.g., The signature is blurry. Please upload a high-resolution scan..."
+                  className="w-full h-24 p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-uce-blue focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* ACTIONS */}
+              <div className="grid grid-cols-2 gap-3 mt-auto">
+                <button
+                  onClick={() => handleDecision("reject")}
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all text-sm"
+                >
+                  <XCircle size={18} /> Reject
+                </button>
+
+                <button
+                  onClick={() => handleDecision("approve")}
+                  // Disable approve if not all checks are met
+                  disabled={!checks.signature || !checks.dates || !checks.bank}
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl bg-uce-blue text-white font-bold hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm shadow-lg shadow-blue-900/10"
+                >
+                  <CheckCircle size={18} /> Approve
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Section: Feedback & Actions */}
-          <div className="mt-auto pt-6 border-t border-gray-100">
-            <label className="text-sm font-bold text-gray-700 mb-2 block">
-              Feedback / Rejection Reason
-            </label>
-            <textarea
-              className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-uce-blue focus:border-transparent outline-none mb-4"
-              rows="3"
-              placeholder="Add specific notes if rejecting..."
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-            ></textarea>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="danger"
-                onClick={handleReject}
-                className="flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white"
-              >
-                <XCircle size={18} /> REJECT
-              </Button>
-
-              <Button
-                variant="primary"
-                onClick={handleApprove}
-                className="flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
-              >
-                <CheckCircle size={18} /> VALIDATE & APPROVE
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };
