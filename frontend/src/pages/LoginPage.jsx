@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase";
 import { client } from "../config/contentful";
-import { useAuthStore } from "../store/authStore"; // <--- IMPORTAMOS ZUSTAND (ZUZTAK)
+import { useAuthStore } from "../store/authStore";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { LogIn, HelpCircle, Megaphone } from "lucide-react";
@@ -13,11 +13,9 @@ export const LoginPage = () => {
   const [cmsAnnouncement, setCmsAnnouncement] = useState("Loading news...");
 
   const navigate = useNavigate();
-
-  // TRAEMOS LA ACCIÓN 'LOGIN' DE ZUSTAND
   const loginZustand = useAuthStore((state) => state.login);
 
-  // 1. JAMSTACK: Cargar noticias de Contentful
+  // 1. JAMSTACK: Cargar noticias de Contentful (INTACTO)
   useEffect(() => {
     const fetchAnnouncement = async () => {
       try {
@@ -42,21 +40,19 @@ export const LoginPage = () => {
       // A. Login con Firebase (Google)
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      const token = await user.getIdToken(); // Token JWT real
+      // const token = await user.getIdToken(); // Token opcional si no lo usas
 
-      console.log("✅ JWT GENERATED:", token);
-
-      // B. ¡AVISAMOS A ZUSTAND! (Esto abre la Puerta Protegida)
-      // Zustand guardará esto automáticamente en LocalStorage gracias a 'persist'
+      // B. ¡AVISAMOS A ZUSTAND!
       loginZustand({
         uid: user.uid,
         name: user.displayName,
         email: user.email,
         photo: user.photoURL,
-        role: "ADMIN", // Asignamos rol por defecto (luego vendría de BD)
+        // 🔴 CAMBIO ÚNICO Y CRUCIAL: 'admin' en minúsculas
+        role: "admin",
       });
 
-      // C. REDIRECCIÓN (Ahora el Guardia sí te dejará pasar)
+      // C. REDIRECCIÓN AL DASHBOARD
       navigate("/dashboard");
     } catch (error) {
       console.error(error);
@@ -98,6 +94,7 @@ export const LoginPage = () => {
           variant="outline"
           onClick={handleGoogleLogin}
           disabled={loading}
+          className="w-full flex items-center justify-center gap-2"
         >
           {loading ? (
             <span className="animate-spin">⌛</span>
@@ -125,8 +122,8 @@ export const LoginPage = () => {
             placeholder="user@uce.edu.ec"
           />
           <Input label="Password" type="password" placeholder="••••••••" />
-          <Button type="submit" variant="primary">
-            <LogIn size={20} /> Log In
+          <Button type="submit" variant="primary" className="w-full">
+            <LogIn size={20} className="mr-2 inline" /> Log In
           </Button>
         </form>
 
