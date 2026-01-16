@@ -2,6 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 1. ESTILOS BASE */
 body {
   background-color: #f5f7fa;
+  /* Opcional: Si usas una fuente específica como Inter, asegúrate de importarla en index.html */
+  /* font-family: 'Inter', sans-serif; */
+}
+
+/* 2. ANIMACIONES SUAVES (UI/UX) */
+@layer utilities {
+  /* Animación principal para entrada de páginas */
+  .animate-fade-in {
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Animación con retraso para elementos internos (tarjetas, listas) */
+  .animate-in-delayed {
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+    opacity: 0; /* Empieza invisible para evitar parpadeos */
+  }
+}
+
+/* Keyframe: Deslizamiento suave hacia arriba + aparición */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px) scale(0.98); /* Empieza un poco más abajo y pequeño */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1); /* Termina en su sitio y tamaño normal */
+  }
+}
+
+/* 3. SCROLLBAR PERSONALIZADO (Estética Moderna) */
+/* Esto quita la barra gris fea del navegador por defecto */
+
+/* Ancho de la barra */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* Fondo de la barra */
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+/* El "pulgar" (lo que se mueve) */
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* Gris suave */
+  border-radius: 4px;
+}
+
+/* Al pasar el mouse sobre la barra */
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* Gris más oscuro */
 }
