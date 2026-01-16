@@ -1,21 +1,22 @@
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import { PhaseBanner } from "../../components/ui/PhaseBanner"; // <--- IMPORTANTE
 import {
   Users,
-  FileText,
   DollarSign,
   Activity,
   Clock,
   ArrowRight,
   TrendingUp,
   AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 
 export const DashboardPage = () => {
   const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
 
-  // --- MOCK DATA (Simulando la base de datos) ---
+  // --- MOCK DATA ---
   const allApplications = [
     {
       id: "S001",
@@ -75,7 +76,7 @@ export const DashboardPage = () => {
     },
   ];
 
-  // Cálculos rápidos para las tarjetas de estadísticas
+  // Cálculos de KPIs
   const totalStudents = allApplications.length;
   const pendingCount = allApplications.filter(
     (a) => a.status === "Pending" || a.status === "Under Review"
@@ -86,15 +87,13 @@ export const DashboardPage = () => {
 
   return (
     <div className="space-y-8">
-      {/* 1. WELCOME HEADER */}
+      {/* 1. HEADER */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">
             Welcome back, {user?.name ? user.name.split(" ")[0] : "Admin"}! 👋
           </h1>
-          <p className="text-gray-500 mt-1">
-            Here is what’s happening with scholarships today.
-          </p>
+          <p className="text-gray-500 mt-1">System Overview & Alerts</p>
         </div>
         <div className="text-right hidden sm:block">
           <p className="text-sm text-gray-400">System Status</p>
@@ -104,9 +103,12 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* 2. STATS CARDS (KPIs) */}
+      {/* 2. CMS PHASE BANNER (Control de Tiempos) */}
+      <PhaseBanner mode="admin" />
+
+      {/* 3. STATS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: Total Applicants */}
+        {/* Total */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="p-4 bg-blue-50 text-uce-blue rounded-xl">
             <Users size={24} />
@@ -121,7 +123,7 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Card 2: Pending Reviews (Urgent) */}
+        {/* Pending (Con alerta visual) */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow relative overflow-hidden">
           <div className="absolute right-0 top-0 w-16 h-16 bg-orange-100 rounded-bl-full -mr-8 -mt-8"></div>
           <div className="p-4 bg-orange-50 text-orange-600 rounded-xl relative z-10">
@@ -135,14 +137,14 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Card 3: Approved / Budget Impact */}
+        {/* Approved */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="p-4 bg-green-50 text-green-600 rounded-xl">
             <DollarSign size={24} />
           </div>
           <div>
             <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">
-              Approved Grants
+              Active Grants
             </p>
             <h3 className="text-3xl font-bold text-gray-800">
               {approvedCount}
@@ -151,7 +153,7 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* 3. REQUIRES ATTENTION TABLE (Option A Implementation) */}
+      {/* 4. URGENCY INBOX (Tabla filtrada) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -185,22 +187,21 @@ export const DashboardPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {/* FILTER: Only show Pending or Under Review */}
+              {/* SOLO PENDIENTES */}
               {allApplications
                 .filter(
                   (app) =>
                     app.status === "Pending" || app.status === "Under Review"
                 )
-                .slice(0, 5) // Show top 5 only
+                .slice(0, 5)
                 .map((app) => (
                   <tr
                     key={app.id}
-                    onClick={() => navigate("/validation")} // CLICK ROW -> GO TO VALIDATION
+                    onClick={() => navigate("/validation")}
                     className="group hover:bg-blue-50/50 transition-colors cursor-pointer"
                   >
                     <td className="py-4 pl-2">
                       <div className="flex items-center gap-3">
-                        {/* Avatar Mockup */}
                         <div className="w-8 h-8 rounded-full bg-uce-gold/20 text-uce-gold flex items-center justify-center font-bold text-xs">
                           {app.name.charAt(0)}
                         </div>
@@ -213,7 +214,6 @@ export const DashboardPage = () => {
                       </div>
                     </td>
 
-                    {/* URGENCY BADGE */}
                     <td className="py-4">
                       <div className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-md w-fit border border-orange-100">
                         <TrendingUp size={12} />
@@ -221,7 +221,6 @@ export const DashboardPage = () => {
                       </div>
                     </td>
 
-                    {/* PROGRESS BAR */}
                     <td className="py-4 w-1/4">
                       <div className="flex justify-between text-xs mb-1">
                         <span className="font-bold text-gray-500">
@@ -241,7 +240,6 @@ export const DashboardPage = () => {
                       </div>
                     </td>
 
-                    {/* CALL TO ACTION BUTTON */}
                     <td className="py-4 text-right pr-2">
                       <span className="text-xs bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg font-bold group-hover:bg-uce-blue group-hover:text-white group-hover:border-transparent transition-all shadow-sm">
                         Review Now
@@ -252,16 +250,13 @@ export const DashboardPage = () => {
             </tbody>
           </table>
 
-          {/* EMPTY STATE */}
           {pendingCount === 0 && (
             <div className="text-center py-12">
               <div className="bg-green-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="text-green-500" size={32} />
               </div>
               <p className="text-gray-800 font-bold">All caught up!</p>
-              <p className="text-gray-500 text-sm">
-                No pending applications requiring attention.
-              </p>
+              <p className="text-gray-500 text-sm">No pending applications.</p>
             </div>
           )}
         </div>
