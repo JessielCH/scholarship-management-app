@@ -1,39 +1,32 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-// Create (Store)
 export const useAuthStore = create(
   persist(
     (set) => ({
-      // Initial
+      // Estado inicial
       user: null,
       isAuthenticated: false,
-      role: "GUEST", // 'ADMIN' o 'STUDENT'
+      role: "guest", // 'admin', 'student', 'guest'
 
-      // Action: Login
+      // Acción de Login
       login: (userData) =>
         set({
           user: userData,
           isAuthenticated: true,
-          role: userData.role || "STUDENT", // Por defecto estudiante si no viene rol
+          role: userData.role,
         }),
 
-      // Action: Logout
+      // Acción de Logout
       logout: () =>
         set({
           user: null,
           isAuthenticated: false,
-          role: "GUEST",
+          role: "guest",
         }),
-
-      // Action: Change Rol
-      toggleRole: () =>
-        set((state) => ({
-          role: state.role === "ADMIN" ? "STUDENT" : "ADMIN",
-        })),
     }),
     {
-      name: "auth-storage", // Name Search Automatic
-    }
-  )
+      name: "scholarship-auth-storage", // Nombre para guardar en LocalStorage
+    },
+  ),
 );

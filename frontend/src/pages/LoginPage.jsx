@@ -1,21 +1,26 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../config/firebase";
+// 1. SUPABASE & STORES
+import { supabase } from "../config/supabaseClient";
 import { client } from "../config/contentful";
 import { useAuthStore } from "../store/authStore";
+// 2. UI COMPONENTS
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { LogIn, HelpCircle, Megaphone } from "lucide-react";
+// Nota: Quitamos el import de Input para usar HTML nativo y evitar el error
+import { LogIn, HelpCircle, Megaphone, Lock, Mail, User } from "lucide-react";
 
 export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [cmsAnnouncement, setCmsAnnouncement] = useState("Loading news...");
 
+  // ESTADO DEL FORMULARIO
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+
   const navigate = useNavigate();
   const loginZustand = useAuthStore((state) => state.login);
 
-  // 1. JAMSTACK: Cargar noticias de Contentful (INTACTO)
+  // --- JAMSTACK (NOTICIAS) ---
   useEffect(() => {
     const fetchAnnouncement = async () => {
       try {
@@ -33,42 +38,102 @@ export const LoginPage = () => {
     fetchAnnouncement();
   }, []);
 
-  // 2. LOGICA DE LOGIN CON GOOGLE + ZUSTAND
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      // A. Login con Firebase (Google)
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      // const token = await user.getIdToken(); // Token opcional si no lo usas
+  // --- DETECTAR ROL ---
+  const determineRole = async (email) => {
+    // A. Whitelist (Admin)
+    const { data: whitelist } = await supabase
+      .from("admin_whitelist")
+      .select("role")
+      .eq("email", email)
+      .single();
 
-      // B. ¡AVISAMOS A ZUSTAND!
+    if (whitelist) return "admin";
+
+    // B. Perfil (Estudiante)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("email", email)
+      .single();
+
+    if (profile && profile.role === "student") return "student";
+
+    return "guest";
+  };
+
+  // --- LOGIN INSTITUCIONAL (EL QUE DABA ERROR) ---
+  const handleInstitutionalLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    console.log("📨 Intentando enviar:", formData); // DEPURACIÓN: Verás esto en consola
+
+    try {
+      if (!formData.email || !formData.password) {
+        throw new Error("Por favor ingresa correo y contraseña");
+      }
+
+      // 1. Supabase Auth
+      const { data, error: authError } = await supabase.auth.signInWithPassword(
+        {
+          email: formData.email,
+          password: formData.password,
+        },
+      );
+
+      if (authError) throw authError;
+
+      // 2. Roles
+      const email = data.user.email;
+      const role = await determineRole(email);
+
+      // 3. Guardar sesión
       loginZustand({
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        photo: user.photoURL,
-        // 🔴 CAMBIO ÚNICO Y CRUCIAL: 'admin' en minúsculas
-        role: "admin",
+        uid: data.user.id,
+        name: email.split("@")[0],
+        email: email,
+        role: role,
       });
 
-      // C. REDIRECCIÓN AL DASHBOARD
-      navigate("/dashboard");
-    } catch (error) {
-      console.error(error);
-      alert("Login Error: " + error.message);
+      // 4. Redirigir
+      if (role === "admin") navigate("/dashboard");
+      else if (role === "student") navigate("/tracker");
+      else navigate("/dashboard");
+    } catch (err) {
+      console.error("❌ Error de Login:", err);
+      setError(
+        err.message === "Invalid login credentials"
+          ? "Credenciales incorrectas"
+          : err.message,
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // --- LOGIN GOOGLE / INVITADO ---
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setTimeout(() => {
+      loginZustand({
+        uid: "guest-123",
+        name: "Invitado Externo",
+        email: "guest@gmail.com",
+        photo: "https://www.svgrepo.com/show/475656/google-color.svg",
+        role: "guest",
+      });
+      navigate("/dashboard");
+      setLoading(false);
+    }, 1000);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gray-50">
-      {/* Línea decorativa */}
       <div className="absolute top-0 left-0 w-full h-2 bg-uce-gold"></div>
 
       <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 space-y-8 relative z-10">
-        {/* Encabezado */}
+        {/* HEADER */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-uce-blue">
             Scholarship <br /> Management
@@ -78,7 +143,7 @@ export const LoginPage = () => {
           </p>
         </div>
 
-        {/* Zona Jamstack (Noticias) */}
+        {/* NOTICIAS */}
         <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
           <Megaphone className="text-uce-blue w-5 h-5 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-uce-blue">
@@ -89,7 +154,7 @@ export const LoginPage = () => {
           </div>
         </div>
 
-        {/* Botón de Google */}
+        {/* BOTÓN GOOGLE */}
         <Button
           variant="outline"
           onClick={handleGoogleLogin}
@@ -105,7 +170,7 @@ export const LoginPage = () => {
               alt="G"
             />
           )}
-          Sign in with Google
+          Sign in with Google (Guest)
         </Button>
 
         <div className="relative flex items-center">
@@ -114,16 +179,73 @@ export const LoginPage = () => {
           <div className="flex-grow border-t border-gray-200"></div>
         </div>
 
-        {/* Formulario Visual (Estético) */}
-        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-          <Input
-            label="Institutional Email"
-            type="email"
-            placeholder="user@uce.edu.ec"
-          />
-          <Input label="Password" type="password" placeholder="••••••••" />
-          <Button type="submit" variant="primary" className="w-full">
-            <LogIn size={20} className="mr-2 inline" /> Log In
+        {/* --- FORMULARIO CORREGIDO (USANDO INPUTS HTML NATIVOS) --- */}
+        <form className="space-y-4" onSubmit={handleInstitutionalLogin}>
+          {/* CAMPO EMAIL */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Institutional Email
+            </label>
+            <div className="relative">
+              <Mail
+                className="absolute left-3 top-2.5 text-gray-400"
+                size={18}
+              />
+              <input
+                type="email"
+                placeholder="superadmin@uce.edu.ec"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                required
+              />
+            </div>
+          </div>
+
+          {/* CAMPO PASSWORD */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <Lock
+                className="absolute left-3 top-2.5 text-gray-400"
+                size={18}
+              />
+              <input
+                type="password"
+                placeholder="••••••••"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                required
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 text-xs rounded border border-red-100 flex items-center gap-2">
+              ⚠️ {error}
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+            disabled={loading}
+          >
+            {loading ? (
+              "Verifying..."
+            ) : (
+              <>
+                <LogIn size={20} className="mr-2 inline" /> Log In
+              </>
+            )}
           </Button>
         </form>
 
