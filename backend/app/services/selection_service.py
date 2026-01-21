@@ -88,7 +88,11 @@ async def process_automatic_selection():
             # Limpieza preventiva para este periodo (idempotencia básica)
             # (Opcional: podrías querer no borrar si ya hay documentos, pero para MVP está bien)
 
-            data = supabase.table("scholarship_applications").insert(selected_students).execute()
+            # Usamos UPSERT + el nombre del candado que acabamos de crear
+            data = supabase.table("scholarship_applications").upsert(
+                selected_students,
+                on_conflict="student_id, period_id"
+            ).execute()
             return {
                 "status": "success",
                 "message": "Proceso completado exitosamente",
